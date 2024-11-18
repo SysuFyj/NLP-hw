@@ -22,10 +22,8 @@ def read_file(filename):
 
 def open_file(filename, mode='r'):
     # mode代表是r读和w写
-    if is_py3:
         return open(filename, mode, encoding='utf-8', errors='ignore')
-    else:
-        return open(filename, mode)
+
 
 
 def build_vocab(train_dir, vocab_dir, vocab_size=5000):
@@ -45,7 +43,7 @@ def build_vocab(train_dir, vocab_dir, vocab_size=5000):
 
 def read_category():
     # 读取分类目录  自己设定
-    categories = ['体育', '财经', '房产', '家居', '教育', '科技', '时尚', '时政', '游戏', '娱乐']
+    categories = ['happy', 'fear', 'sad', 'disgust', 'surprise', 'angry']
 
     cat_to_id = dict(zip(categories, range(len(categories))))
 

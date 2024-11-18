@@ -10,7 +10,7 @@ from datetime import timedelta
 
 tf.compat.v1.disable_eager_execution()
 
-base_dir = 'data/file'
+base_dir = 'data'
 train_dir = os.path.join(base_dir, 'train.txt')
 test_dir = os.path.join(base_dir, 'test.txt')
 val_dir = os.path.join(base_dir, 'val.txt')
