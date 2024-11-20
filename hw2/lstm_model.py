@@ -1,15 +1,15 @@
 import tensorflow as tf
-import numpy as np
+import re
 
 
-class LSTMConfig:
+class LSTM_config(object):
     max_document_length = 600
-    num_class = 10
+    num_class = 6
     embedding_size = 64
-    lstm_size_each_layer = '256,128'
-    use_bidirectional = False
+    lstm_size_each_layer = '256, 128'
+    use_bidirectional = 0
     use_basic_cell = 1
-    use_attention = True
+    use_attention = 1
     attention_size = 200
     grad_clip = 5.0
     learning_rate = 0.001
@@ -18,229 +18,156 @@ class LSTMConfig:
     dropout_keep_prob = 0.5
     save_per_batch = 10
     print_per_batch = 128
-    vocab_size = 5000  # 假设词汇表大小
 
 
-class LSTMModel(tf.keras.Model):
+class Lstm(object):
     def __init__(self, config):
-        super(LSTMModel, self).__init__()
+        tf.set_random_seed(66)
         self.config = config
+        self.input_x = tf.placeholder(tf.int32, [None, self.config.max_document_length],name="input_x")
+        self.input_y = tf.placeholder(tf.float32, [None, self.config.num_class],name="input_y")
+        self.keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
-        # Embedding层
-        self.embedding = tf.keras.layers.Embedding(
-            input_dim=self.config.vocab_size,
-            output_dim=self.config.embedding_size,
-            embeddings_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.1),
-            name="embedding"
-        )
+        with tf.device('/cpu:0'), tf.name_scope('embedding'):
+            self.W = tf.Variable(
+                tf.truncated_normal([self.config.vocab_size, self.config.embedding_size],stddev=0.1), name='W')
+            self.embedding = tf.nn.embedding_lookup(self.W,self.input_x)
 
-        # LSTM层
-        lstm_sizes = [int(size.strip()) for size in self.config.lstm_size_each_layer.split(',')]
-        self.lstm_layers = [
-            tf.keras.layers.LSTM(size, return_sequences=True, dropout=self.config.dropout_keep_prob)
-            for size in lstm_sizes
-        ]
-        if self.config.use_bidirectional:
-            self.lstm_layers = [
-                tf.keras.layers.Bidirectional(layer) for layer in self.lstm_layers
-            ]
+        with tf.variable_scope('layer'):
+            lstm_size_each_layer = self.config.lstm_size_each_layer.split(',')
+            use_bidirectional = self.config.use_bidirectional
+            self.lstm_cell = self.construct_model(lstm_size_each_layer)
+            if use_bidirectional:
+                self.lstm_cell_bk = self.construct_model(lstm_size_each_layer)
+                self.outputs, self.output_states = tf.nn.bidirectional_dynamic_rnn(self.lstm_cell, self.lstm_cell_bk,
+                                                                                   self.embedding, dtype=tf.float32)
+            else:
+                self.outputs, self.output_states = tf.nn.dynamic_rnn(self.lstm_cell, self.embedding,
+                                                                     dtype=tf.float32)
 
-        # Attention 层
-        self.use_attention = self.config.use_attention
-        if self.use_attention:
-            self.attention_w = tf.keras.layers.Dense(self.config.attention_size, activation='tanh')
-            self.attention_u = tf.keras.layers.Dense(1, activation=None)
-
-        # F全连接layer
-        self.fc = tf.keras.layers.Dense(self.config.num_class)
-
-    def call(self, inputs, training=None):
-        x, y = inputs
-
-        # Embedding
-        x = self.embedding(x)
-
-        # LSTM layers
-        for lstm_layer in self.lstm_layers:
-            x = lstm_layer(x)
-
-        # Attention mechanism
-        if self.use_attention:
-            u = self.attention_w(x)  # Apply attention weights
-            attention_scores = tf.nn.softmax(self.attention_u(u), axis=1)
-            x = tf.reduce_sum(x * attention_scores, axis=1)
+        takeall = False
+        if 'True' == takeall:
+            inputsize_batch = self.args.max_document_lenth * int(lstm_size_each_layer[-1])
         else:
-            x = x[:, -1, :]  # 使用上一个时间步的输出
+            inputsize_batch = int(lstm_size_each_layer[-1])
+        if self.config.use_attention:
+            with tf.name_scope('attention'), tf.variable_scope('attention'):
+                attention_size = self.config.attention_size
+                attention_b = tf.Variable(tf.constant(0.1, shape=[attention_size]), name='attention_b')
+                u_list = []
+                if use_bidirectional:
+                    for index in range(2):
+                        attention_w = tf.Variable(tf.truncated_normal([inputsize_batch, attention_size], stddev=0.1),
+                                                  name='attention_w')
+                        if 'True' == takeall:
+                            self.outputs_flat = tf.reshape(self.outputs[index], [-1, inputsize_batch])
+                        else:
+                            self.outputs_flat = tf.unstack(tf.transpose(self.outputs[index], [1, 0, 2]))[-1]
+                        u_list.append(tf.tanh(tf.matmul(self.outputs_flat, attention_w) + attention_b))
+                else:
+                    attention_w = tf.Variable(tf.truncated_normal([inputsize_batch, attention_size], stddev=0.1),
+                                              name='attention_w')
+                    if 'True' == takeall:
+                        self.outputs_flat = tf.reshape(self.outputs, [-1, inputsize_batch])
+                    else:
+                        self.outputs_flat = tf.unstack(tf.transpose(self.outputs, [1, 0, 2]))[-1]
+                    u_list.append(
+                        tf.tanh(tf.matmul(self.outputs_flat, attention_w) + attention_b))  # (?, 122, attention_size)
 
-        # 全连接层
-        logits = self.fc(x)
-        predictions = tf.nn.softmax(logits, axis=1)
+                attn_z = []
+                u_w = tf.Variable(tf.truncated_normal([attention_size, 1], stddev=0.1), name='attention_uw')
+                for index in range(len(u_list)):
+                    z_t = tf.matmul(u_list[index], u_w)
+                    attn_z.append(z_t)
+                attn_zconcat = tf.concat(attn_z, axis=1)
+                self.alpha = tf.nn.softmax(attn_zconcat)
+                if use_bidirectional:
+                    self.alpha = tf.reshape(self.alpha, [-1, 2])
+                final_output_tmp = []
+                for index in range(len(u_list)):
+                    if use_bidirectional:
+                        if 'True' == takeall:
+                            self.outputs_flat = tf.reshape(self.outputs[index], [-1, inputsize_batch])
+                        else:
+                            self.outputs_flat = tf.unstack(tf.transpose(self.outputs[index], [1, 0, 2]))[-1]
+                        final_output_tmp.append(self.outputs_flat * (tf.reshape(self.alpha[:, index], [-1, 1])))  #
+                    else:
+                        if 'True' == takeall:
+                            self.outputs_flat = tf.reshape(self.outputs, [-1, inputsize_batch])
+                        else:
+                            self.outputs_flat = tf.unstack(tf.transpose(self.outputs, [1, 0, 2]))[-1]
+                        self.final_output = self.outputs_flat * self.alpha
+                if use_bidirectional:
+                    self.final_output = tf.concat(final_output_tmp, axis=1)
+        else:
+            final_output_tmp = []
+            if use_bidirectional:
+                for index in range(2):
+                    if 'True' == takeall:
+                        final_output_tmp.append(tf.reshape(self.outputs[index], [-1, inputsize_batch]))
+                    else:
+                        final_output_tmp.append(tf.unstack(tf.transpose(self.outputs[index], [1, 0, 2]))[-1])
+            else:
+                if 'True' == takeall:
+                    self.final_output = tf.reshape(self.outputs, [-1, inputsize_batch])
+                else:
+                    self.final_output = tf.unstack(tf.transpose(self.outputs, [1, 0, 2]))[-1]
+            if use_bidirectional:
+                self.final_output = tf.concat(final_output_tmp, axis=1)
 
-        return logits, predictions
+        # full connection layer
+        with tf.name_scope("output"):
+            real_size = inputsize_batch
+            if use_bidirectional:
+                real_size *= 2
+            fc_w = tf.Variable(tf.truncated_normal([real_size, self.config.num_class], stddev=0.1), name='fc_w')
+            fc_b = tf.Variable(tf.zeros([self.config.num_class]), name='fc_b')
+            self.logits = tf.nn.xw_plus_b(self.final_output, fc_w, fc_b, name="logits")
+            self.scores = tf.nn.softmax(self.logits)  # 每个文本的问题是某类的得分
+            self.predictions = tf.argmax(self.logits, 1, name="predictions")  # 最大得分的index
 
+        # loss
+        with tf.name_scope("loss"):
+            if 5 <= int(re.findall('\.(.*)?\.', tf.__version__)[0]):
+                losses = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.logits, labels=self.input_y)
+            else:
+                losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.logits, labels=self.input_y)
+            self.loss = tf.reduce_mean(losses)
 
-class LSTMTrainer:
-    def __init__(self, config):
-        self.config = config
-        self.model = LSTMModel(config)
-        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
+        with tf.name_scope("accuracy"):
+            self.correct_predictions = tf.equal(self.predictions, tf.argmax(self.input_y, 1))  # 准确率
+            self.acc = tf.reduce_mean(tf.cast(self.correct_predictions, "float"), name="accuracy")
 
-    def train_step(self, x_batch, y_batch):
-        with tf.GradientTape() as tape:
-            logits, _ = self.model((x_batch, y_batch), training=True)
-            loss = self.loss_fn(y_batch, logits)
+        # Optimizer
+        with tf.name_scope("Optimizer"):
+            """
+            打印tensorflow变量的函数有两个：
+            tf.trainable_variables () 和 tf.all_variables()
+            不同的是：
+            tf.trainable_variables () 指的是需要训练的变量
+            tf.all_variables() 指的是所有变量
+            """
+            tvars = tf.trainable_variables()
+            # 防止梯度爆炸  对所有参数进行求导
+            grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars),
+                                              self.config.grad_clip)
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.config.learning_rate)
+            self.optim = optimizer.apply_gradients(zip(grads, tvars))  # 更新梯度
 
-        # Compute and apply gradients
-        gradients = tape.gradient(loss, self.model.trainable_variables)
-        gradients, _ = tf.clip_by_global_norm(gradients, self.config.grad_clip)
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-        return loss
-
-    def evaluate(self, x, y):
-        logits, predictions = self.model((x, y), training=False)
-        accuracy = tf.reduce_mean(
-            tf.cast(tf.equal(tf.argmax(predictions, axis=1), tf.argmax(y, axis=1)), dtype=tf.float32)
-        )
-        return accuracy
-
-
-
-# config = LSTMConfig()
-# trainer = LSTMTrainer(config)
-
-# # Fake data for demonstration purposes
-# x_train = np.random.randint(0, config.vocab_size, size=(100, config.max_document_length))
-# y_train = tf.keras.utils.to_categorical(np.random.randint(0, config.num_class, size=(100,)), num_classes=config.num_class)
-
-#训练
-for epoch in range(config.num_epochs):
-    batch_loss = trainer.train_step(x_train, y_train)
-    print(f"Epoch {epoch + 1}, Loss: {batch_loss.numpy()}")
-
-# 评估
-accuracy = trainer.evaluate(x_train, y_train)
-print(f"Training Accuracy: {accuracy.numpy()}")
-# import tensorflow as tf
-# import numpy as np
-
-
-# class LSTMConfig:
-#     max_document_length = 600
-#     num_class = 10
-#     embedding_size = 64
-#     lstm_size_each_layer = '256,128'
-#     use_bidirectional = False
-#     use_basic_cell = 1
-#     use_attention = True
-#     attention_size = 200
-#     grad_clip = 5.0
-#     learning_rate = 0.001
-#     num_epochs = 10
-#     batch_size = 32
-#     dropout_keep_prob = 0.5
-#     save_per_batch = 10
-#     print_per_batch = 128
-#     vocab_size = 5000  # 假设词汇表大小
-
-
-# class LSTMModel(tf.keras.Model):
-#     def __init__(self, config):
-#         super(LSTMModel, self).__init__()
-#         self.config = config
-
-#         # Embedding layer
-#         self.embedding = tf.keras.layers.Embedding(
-#             input_dim=self.config.vocab_size,
-#             output_dim=self.config.embedding_size,
-#             embeddings_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.1),
-#             name="embedding"
-#         )
-
-#         # LSTM Layers
-#         lstm_sizes = [int(size.strip()) for size in self.config.lstm_size_each_layer.split(',')]
-#         self.lstm_layers = [
-#             tf.keras.layers.LSTM(size, return_sequences=True, dropout=self.config.dropout_keep_prob)
-#             for size in lstm_sizes
-#         ]
-#         if self.config.use_bidirectional:
-#             self.lstm_layers = [
-#                 tf.keras.layers.Bidirectional(layer) for layer in self.lstm_layers
-#             ]
-
-#         # Attention layer
-#         self.use_attention = self.config.use_attention
-#         if self.use_attention:
-#             self.attention_w = tf.keras.layers.Dense(self.config.attention_size, activation='tanh')
-#             self.attention_u = tf.keras.layers.Dense(1, activation=None)
-
-#         # Fully connected layer
-#         self.fc = tf.keras.layers.Dense(self.config.num_class)
-
-#     def call(self, inputs, training=None):
-#         x, y = inputs
-
-#         # Embedding
-#         x = self.embedding(x)
-
-#         # LSTM layers
-#         for lstm_layer in self.lstm_layers:
-#             x = lstm_layer(x)
-
-#         # Attention mechanism
-#         if self.use_attention:
-#             u = self.attention_w(x)  # Apply attention weights
-#             attention_scores = tf.nn.softmax(self.attention_u(u), axis=1)
-#             x = tf.reduce_sum(x * attention_scores, axis=1)
-#         else:
-#             x = x[:, -1, :]  # Use the output of the last time step
-
-#         # Fully connected layer
-#         logits = self.fc(x)
-#         predictions = tf.nn.softmax(logits, axis=1)
-
-#         return logits, predictions
+    def construct_model(self, lstm_size_each_layer):
+        use_basic_cell = self.config.use_basic_cell
+        if 0 == use_basic_cell:
+            lstm_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.DropoutWrapper(
+                tf.nn.rnn_cell.BasicLSTMCell(int(size.strip())), output_keep_prob=self.keep_prob) for size in
+                                                     lstm_size_each_layer])
+        elif 1 == use_basic_cell:
+            lstm_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.DropoutWrapper(
+                tf.nn.rnn_cell.LSTMCell(int(size.strip())), output_keep_prob=self.keep_prob) for size in
+                                                     lstm_size_each_layer])
+        elif 2 == use_basic_cell:
+            lstm_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.DropoutWrapper(
+                tf.nn.rnn_cell.GRUCell(int(size.strip())), output_keep_prob=self.keep_prob) for size in
+                                                     lstm_size_each_layer])
+        return lstm_cell
 
 
-# class LSTMTrainer:
-#     def __init__(self, config):
-#         self.config = config
-#         self.model = LSTMModel(config)
-#         self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-#         self.optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
-
-#     def train_step(self, x_batch, y_batch):
-#         with tf.GradientTape() as tape:
-#             logits, _ = self.model((x_batch, y_batch), training=True)
-#             loss = self.loss_fn(y_batch, logits)
-
-#         # Compute and apply gradients
-#         gradients = tape.gradient(loss, self.model.trainable_variables)
-#         gradients, _ = tf.clip_by_global_norm(gradients, self.config.grad_clip)
-#         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-#         return loss
-
-#     def evaluate(self, x, y):
-#         logits, predictions = self.model((x, y), training=False)
-#         accuracy = tf.reduce_mean(
-#             tf.cast(tf.equal(tf.argmax(predictions, axis=1), tf.argmax(y, axis=1)), dtype=tf.float32)
-#         )
-#         return accuracy
-
-
-# # Example usage
-# config = LSTMConfig()
-# trainer = LSTMTrainer(config)
-
-# # Fake data for demonstration purposes
-# x_train = np.random.randint(0, config.vocab_size, size=(100, config.max_document_length))
-# y_train = tf.keras.utils.to_categorical(np.random.randint(0, config.num_class, size=(100,)), num_classes=config.num_class)
-
-# # Training
-# for epoch in range(config.num_epochs):
-#     batch_loss = trainer.train_step(x_train, y_train)
-#     print(f"Epoch {epoch + 1}, Loss: {batch_loss.numpy()}")
-
-# # Evaluation
-# accuracy = trainer.evaluate(x_train, y_train)
-# print(f"Training Accuracy: {accuracy.numpy()}")

@@ -1,0 +1,107 @@
+WARNING:tensorflow:
+The TensorFlow contrib module will not be included in TensorFlow 2.0.
+For more information, please see:
+  * https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md
+  * https://github.com/tensorflow/addons
+  * https://github.com/tensorflow/io (for I/O related ops)
+If you depend on functionality not listed there, please file an issue.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:25: The name tf.set_random_seed is deprecated. Please use tf.compat.v1.set_random_seed instead.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:27: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:33: The name tf.truncated_normal is deprecated. Please use tf.random.truncated_normal instead.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:36: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:165: The name tf.nn.rnn_cell.DropoutWrapper is deprecated. Please use tf.compat.v1.nn.rnn_cell.DropoutWrapper instead.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:165: LSTMCell.__init__ (from tensorflow.python.ops.rnn_cell_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+This class is equivalent as tf.keras.layers.LSTMCell, and will be replaced by that in Tensorflow 2.0.
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:166: MultiRNNCell.__init__ (from tensorflow.python.ops.rnn_cell_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+This class is equivalent as tf.keras.layers.StackedRNNCells, and will be replaced by that in Tensorflow 2.0.
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:46: dynamic_rnn (from tensorflow.python.ops.rnn) is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `keras.layers.RNN(cell)`, which is equivalent to this API
+WARNING:tensorflow:From /home/users/liuxiao/anaconda3/envs/fyj_nlp/lib/python3.6/site-packages/tensorflow_core/python/ops/rnn_cell_impl.py:958: Layer.add_variable (from tensorflow.python.keras.engine.base_layer) is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `layer.add_weight` method instead.
+WARNING:tensorflow:From /home/users/liuxiao/anaconda3/envs/fyj_nlp/lib/python3.6/site-packages/tensorflow_core/python/ops/rnn_cell_impl.py:962: calling Zeros.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+Instructions for updating:
+Call initializer instance with the dtype argument instead of passing it to the constructor
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:125: The name tf.nn.xw_plus_b is deprecated. Please use tf.compat.v1.nn.xw_plus_b instead.
+
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:150: The name tf.trainable_variables is deprecated. Please use tf.compat.v1.trainable_variables instead.
+
+WARNING:tensorflow:From /home/users/liuxiao/anaconda3/envs/fyj_nlp/lib/python3.6/site-packages/tensorflow_core/python/ops/clip_ops.py:301: where (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.where in 2.0, which has the same broadcast rule as np.where
+WARNING:tensorflow:From /data/fyj/project/Sentiment-Analysis-DL/lstm_model.py:154: The name tf.train.AdamOptimizer is deprecated. Please use tf.compat.v1.train.AdamOptimizer instead.
+
+WARNING:tensorflow:From run_LSTM_model.py:54: The name tf.summary.scalar is deprecated. Please use tf.compat.v1.summary.scalar instead.
+
+WARNING:tensorflow:From run_LSTM_model.py:56: The name tf.summary.merge_all is deprecated. Please use tf.compat.v1.summary.merge_all instead.
+
+WARNING:tensorflow:From run_LSTM_model.py:57: The name tf.summary.FileWriter is deprecated. Please use tf.compat.v1.summary.FileWriter instead.
+
+WARNING:tensorflow:From run_LSTM_model.py:60: The name tf.train.Saver is deprecated. Please use tf.compat.v1.train.Saver instead.
+
+WARNING:tensorflow:From run_LSTM_model.py:71: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+2024-11-19 18:10:12.394455: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2024-11-19 18:10:12.451995: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1618] Found device 0 with properties: 
+name: NVIDIA GeForce RTX 3090 major: 8 minor: 6 memoryClockRate(GHz): 1.695
+pciBusID: 0000:39:00.0
+2024-11-19 18:10:12.452487: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.0'; dlerror: libcudart.so.10.0: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452595: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcublas.so.10.0'; dlerror: libcublas.so.10.0: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452658: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcufft.so.10.0'; dlerror: libcufft.so.10.0: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452717: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcurand.so.10.0'; dlerror: libcurand.so.10.0: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452771: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcusolver.so.10.0'; dlerror: libcusolver.so.10.0: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452829: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcusparse.so.10.0'; dlerror: libcusparse.so.10.0: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452893: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudnn.so.7'; dlerror: libcudnn.so.7: cannot open shared object file: No such file or directory
+2024-11-19 18:10:12.452911: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1641] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2024-11-19 18:10:12.453809: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 AVX512F FMA
+2024-11-19 18:10:12.504215: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2600000000 Hz
+2024-11-19 18:10:12.515088: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x55b4b7c7bda0 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2024-11-19 18:10:12.515233: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2024-11-19 18:10:12.812104: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x55b4b7d44b90 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2024-11-19 18:10:12.812246: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): NVIDIA GeForce RTX 3090, Compute Capability 8.6
+2024-11-19 18:10:12.812502: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1159] Device interconnect StreamExecutor with strength 1 edge matrix:
+2024-11-19 18:10:12.812517: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1165]      
+WARNING:tensorflow:From run_LSTM_model.py:72: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+CUDA_VISIBLE_DEVICES: None
+CUDA_VISIBLE_DEVICES: 2
+CUDA_VISIBLE_DEVICES: 2
+Configuring TensorBoard and Saver...
+Loading training and validation data...
+Time usage: 0:00:01
+Training and evaluating...
+Epoch: 1
+Iter:      0, Train Loss:    1.8, Train Acc:  31.25%, Val Loss:    1.8, Val Acc:  24.11%, Time: 0:00:34 *
+Iter:    128, Train Loss:    1.5, Train Acc:  50.00%, Val Loss:    1.5, Val Acc:  38.29%, Time: 0:06:43 *
+Epoch: 2
+Iter:    256, Train Loss:    1.4, Train Acc:  34.38%, Val Loss:    1.5, Val Acc:  39.09%, Time: 0:12:43 *
+Epoch: 3
+Iter:    384, Train Loss:    1.2, Train Acc:  53.12%, Val Loss:    1.5, Val Acc:  40.34%, Time: 0:18:46 *
+Iter:    512, Train Loss:    1.4, Train Acc:  40.62%, Val Loss:    1.4, Val Acc:  41.94%, Time: 0:24:42 *
+Epoch: 4
+Iter:    640, Train Loss:    1.2, Train Acc:  50.00%, Val Loss:    1.4, Val Acc:  43.38%, Time: 0:30:48 *
+Epoch: 5
+Iter:    768, Train Loss:    1.2, Train Acc:  50.00%, Val Loss:    1.4, Val Acc:  43.04%, Time: 0:37:11 
+Iter:    896, Train Loss:    1.7, Train Acc:  40.62%, Val Loss:    1.4, Val Acc:  44.08%, Time: 0:43:15 *
+Epoch: 6
+Iter:   1024, Train Loss:    1.3, Train Acc:  43.75%, Val Loss:    1.4, Val Acc:  43.78%, Time: 0:49:27 
+Epoch: 7
+Iter:   1152, Train Loss:    1.1, Train Acc:  59.38%, Val Loss:    1.4, Val Acc:  45.43%, Time: 0:55:28 *
+Iter:   1280, Train Loss:    1.1, Train Acc:  59.38%, Val Loss:    1.4, Val Acc:  46.63%, Time: 1:01:34 *
+Epoch: 8
+Iter:   1408, Train Loss:    1.1, Train Acc:  65.62%, Val Loss:    1.4, Val Acc:  45.58%, Time: 1:07:48 
+Epoch: 9
+Iter:   1536, Train Loss:    1.1, Train Acc:  50.00%, Val Loss:    1.4, Val Acc:  45.38%, Time: 1:13:59 
+Iter:   1664, Train Loss:    1.3, Train Acc:  46.88%, Val Loss:    1.3, Val Acc:  46.93%, Time: 1:20:21 *
+Epoch: 10
+Iter:   1792, Train Loss:    1.4, Train Acc:  50.00%, Val Loss:    1.3, Val Acc:  48.33%, Time: 1:26:39 *

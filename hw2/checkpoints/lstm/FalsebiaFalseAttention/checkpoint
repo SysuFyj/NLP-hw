@@ -1,0 +1,2 @@
+model_checkpoint_path: "/data/fyj/project/Sentiment-Analysis-DL/checkpoints/lstm/FalsebiaFalseAttention/best_validation"
+all_model_checkpoint_paths: "/data/fyj/project/Sentiment-Analysis-DL/checkpoints/lstm/FalsebiaFalseAttention/best_validation"

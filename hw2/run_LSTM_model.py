@@ -7,17 +7,11 @@ import time
 from lstm_model import Lstm, LSTM_config
 from data_deal import build_vocab, read_category, read_vocab, batch_iter, process_file
 from datetime import timedelta
+import argparse
 
-tf.compat.v1.disable_eager_execution()
 
-base_dir = 'data'
-train_dir = os.path.join(base_dir, 'train.txt')
-test_dir = os.path.join(base_dir, 'test.txt')
-val_dir = os.path.join(base_dir, 'val.txt')
-vocab_dir = os.path.join(base_dir, 'vocab.txt')
 
-save_dir = 'checkpoints/lstm'
-save_path = os.path.join(save_dir, 'best_validation')  # 最佳验证结果保存路径
+
 
 
 def get_time_dif(start_time):
@@ -36,7 +30,7 @@ def feed_data(x_batch, y_batch, keep_prob):
     return feed_dict
 
 
-def evaluate(session, x_, y_):
+def evaluate(sess, x_, y_):
     """评估在某一数据上的准确率和损失"""
     data_len = len(x_)
     batch_eval = batch_iter(x_, y_, 128)
@@ -45,25 +39,25 @@ def evaluate(session, x_, y_):
     for x_batch, y_batch in batch_eval:
         batch_len = len(x_batch)
         feed_dict = feed_data(x_batch, y_batch, 1.0)
-        loss, acc = session.run([model.loss, model.acc], feed_dict=feed_dict)
+        loss, acc = sess.run([model.loss, model.acc], feed_dict=feed_dict)
         total_loss += loss * batch_len
         total_acc += acc * batch_len
 
     return total_loss / data_len, total_acc / data_len
 
 
-def train():
+def train(config, train_dir, val_dir, save_path, word_to_id, cat_to_id, categories,model):
+    save_dir = os.path.dirname(save_path)
     print("Configuring TensorBoard and Saver...")
-    tensorboard_dir = 'tensorboard/textcnn'
-    if not os.path.exists(tensorboard_dir):
-        os.makedirs(tensorboard_dir)
-    tf.compat.v1.summary.scalar("loss", model.loss)
-    tf.compat.v1.summary.scalar("accuracy", model.acc)
-    merged_summary = tf.compat.v1.summary.merge_all()
-    writer = tf.compat.v1.summary.FileWriter(tensorboard_dir)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    tf.summary.scalar("loss", model.loss)
+    tf.summary.scalar("accuracy", model.acc)
+    merged_summary = tf.summary.merge_all()
+    writer = tf.summary.FileWriter(save_dir)
 
     # 配置 Saver
-    saver = tf.compat.v1.train.Saver()
+    saver = tf.train.Saver()
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -74,8 +68,8 @@ def train():
     time_dif = get_time_dif(start_time)
     print("Time usage:", time_dif)
 
-    session = tf.compat.v1.Session()
-    session.run(tf.compat.v1.global_variables_initializer())
+    session = tf.Session()
+    session.run(tf.global_variables_initializer())
     writer.add_graph(session.graph)
 
     print('Training and evaluating...')
@@ -91,6 +85,7 @@ def train():
         batch_train = batch_iter(x_train, y_train, config.batch_size)
         for x_batch, y_batch in batch_train:
             feed_dict = feed_data(x_batch, y_batch, config.dropout_keep_prob)
+            # print("x_batch is {}".format(x_batch.shape))
             if total_batch % config.save_per_batch == 0:
                 # 每多少轮次将训练结果写入tensorboard scalar
                 s = session.run(merged_summary, feed_dict=feed_dict)
@@ -128,14 +123,14 @@ def train():
             break
 
 
-def test():
+def test(config, test_dir, save_path, word_to_id, cat_to_id, categories,model):
     print("Loading test data...")
     start_time = time.time()
     x_test, y_test = process_file(test_dir, word_to_id, cat_to_id, config.max_document_length)
 
-    session = tf.compat.v1.Session()
-    session.run(tf.compat.v1.global_variables_initializer())
-    saver = tf.compat.v1.train.Saver()
+    session = tf.Session()
+    session.run(tf.global_variables_initializer())
+    saver = tf.train.Saver()
     saver.restore(sess=session, save_path=save_path)  # 读取保存的模型
 
     print('Testing...')
@@ -169,18 +164,73 @@ def test():
 
     time_dif = get_time_dif(start_time)
     print("Time usage:", time_dif)
-
+    
+    
 
 if __name__ == "__main__":
+    print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+    parser = argparse.ArgumentParser(description="LSTM Model Training and Testing")
+
+    # 数据输入路径（父文件夹）
+    parser.add_argument('--data_dir', type=str, required=True,
+                        help='数据输入路径（父文件夹），例如: data')
+
+    # Checkpoint的输出路径
+    parser.add_argument('--checkpoint_dir', type=str, required=True,
+                        help='Checkpoint的输出路径，例如: checkpoints/lstm')
+
+    # 使用的GPU编号
+    parser.add_argument('--gpu', type=str, default='5',
+                        help='使用的GPU编号，默认为5')
+    
+    
+    # 运行模式：train 或 test
+    parser.add_argument('--mode', type=str, choices=['train', 'test'], required=True,
+                        help="运行模式，选择 'train' 进行训练或 'test' 进行测试")
+    parser.add_argument('--AttentionUsed', type=str, default='True',choices=['True', 'False'], required=True,
+                        help="是否使用注意力机制")
+    parser.add_argument('--BiUsed', type=str, default='True',choices=['True', 'False'], required=True,
+                        help="是否使用双向LSTM")
+
+    args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+        #os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+    base_dir = args.data_dir
+    train_dir = os.path.join(base_dir, 'train.txt')
+    test_dir = os.path.join(base_dir, 'test.txt')
+    val_dir = os.path.join(base_dir, 'val.txt')
+    vocab_dir = os.path.join(base_dir, 'vocab.txt')
+
+    save_dir = args.checkpoint_dir
+    save_path = os.path.join(save_dir, 'best_validation')  # 最佳验证结果保存路径
+
     config = LSTM_config()
     if not os.path.exists(vocab_dir):
         build_vocab(train_dir, vocab_dir, config.vocab_size)
     categories, cat_to_id = read_category()
     words, word_to_id = read_vocab(vocab_dir)
     config.vocab_size = len(words)
-    model = Lstm(config)
-    option = 'train'
-    if option == 'train':
-        train()
+    if args.AttentionUsed == 'True':
+        config.use_attention=True
+        if args.BiUsed == 'True':
+            config.use_bidirectional=True
+        else:
+            config.use_bidirectional=False
     else:
-        test()
+        config.use_attention=False
+        config.use_bidirectional=False
+    model = Lstm(config)
+    if args.mode == 'train':
+        train(config, train_dir, val_dir, save_path, word_to_id, cat_to_id, categories,model)
+
+    elif args.mode == 'test':
+        test(config, test_dir, save_path, word_to_id, cat_to_id, categories,model)
+    else:
+        print("Invalid mode. Please choose 'train' or 'test'.")
+        
+    
+    
+        
+
